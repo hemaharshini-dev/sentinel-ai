@@ -133,5 +133,26 @@
             "bank_accounts": [],
             "telegram_ids": []
         }
+    },
+    {
+        "id": "Complaint-872e0d0c",
+        "entities": {
+            "phone_numbers": [
+                "9876543210"
+            ],
+            "upi_ids": [
+                "fraud@ybl"
+            ],
+            "government_authorities": [
+                "CBI"
+            ],
+            "amounts": [
+                "\u20b950000"
+            ],
+            "emails": [],
+            "urls": [],
+            "bank_accounts": [],
+            "telegram_ids": []
+        }
     }
 ]
