@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from llm import llm
+from agents.investigation_agent import investigate
 
 app = FastAPI()
 
@@ -27,21 +28,6 @@ def home():
 @app.post("/analyze")
 def analyze(request: AnalyzeRequest):
 
-    prompt = f"""
-You are an AI fraud analyst.
+    result = investigate(request.message)
 
-Analyze the following message.
-
-Message:
-{request.message}
-
-Return only:
-1. Scam Type
-2. One-line Summary
-"""
-
-    response = llm.invoke(prompt)
-
-    return {
-        "summary": response.content
-    }
+    return result

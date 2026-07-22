@@ -3,14 +3,14 @@ import axios from "axios";
 
 function App() {
   const [message, setMessage] = useState("");
-  const [result, setResult] = useState("");
+  const [result, setResult] = useState<any>(null);
 
   const analyze = async () => {
     const response = await axios.post("http://127.0.0.1:8000/analyze", {
       message,
     });
 
-    setResult(response.data.summary);
+    setResult(response.data);
   };
 
   return (
@@ -33,7 +33,26 @@ function App() {
       <br />
       <br />
 
-      <h2>{result}</h2>
+      {result && (
+        <div>
+          <h2>Scam Type</h2>
+          <p>{result.scam_type}</p>
+
+          <h2>Summary</h2>
+          <p>{result.summary}</p>
+
+          <h2>Reason</h2>
+          <p>{result.reason}</p>
+
+          <h2>Immediate Actions</h2>
+
+          <ul>
+            {result.immediate_actions.map((action: string, index: number) => (
+              <li key={index}>{action}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
