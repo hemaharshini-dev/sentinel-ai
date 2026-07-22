@@ -7,6 +7,8 @@ from agents.intelligence_agent import analyze_campaign
 from graph_db.graph_manager import save_complaint
 import uuid
 
+from agents.report_agent import generate_report
+
 def investigation_node(state: AgentState):
 
     print("Running Investigation Agent")
@@ -55,8 +57,10 @@ def intelligence_node(state):
     return state
 
 
-def report_node(state: AgentState):
+def report_node(state):
 
     print("Running Report Agent")
+
+    state["report"] = generate_report(state)
 
     return state

@@ -70,5 +70,68 @@
             "bank_accounts": [],
             "telegram_ids": []
         }
+    },
+    {
+        "id": "Complaint-6b5df26d",
+        "entities": {
+            "phone_numbers": [
+                "9876543210"
+            ],
+            "upi_ids": [],
+            "government_authorities": [
+                "CBI"
+            ],
+            "amounts": [
+                "\u20b950000"
+            ],
+            "emails": [
+                "fraud@ybl"
+            ],
+            "urls": [],
+            "bank_accounts": [],
+            "telegram_ids": []
+        }
+    },
+    {
+        "id": "Complaint-4bcebe0d",
+        "entities": {
+            "phone_numbers": [
+                "9876543210"
+            ],
+            "upi_ids": [],
+            "government_authorities": [
+                "CBI"
+            ],
+            "amounts": [
+                "\u20b950000"
+            ],
+            "emails": [
+                "fraud@ybl"
+            ],
+            "urls": [],
+            "bank_accounts": [],
+            "telegram_ids": []
+        }
+    },
+    {
+        "id": "Complaint-fc361c4a",
+        "entities": {
+            "phone_numbers": [
+                "9876543210"
+            ],
+            "upi_ids": [
+                "fraud@ybl"
+            ],
+            "government_authorities": [
+                "CBI"
+            ],
+            "amounts": [
+                "\u20b950000"
+            ],
+            "emails": [],
+            "urls": [],
+            "bank_accounts": [],
+            "telegram_ids": []
+        }
     }
 ]

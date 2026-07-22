@@ -4,6 +4,8 @@ from pydantic import BaseModel
 from llm import llm
 from agents.investigation_agent import investigate
 from agents.crisis_agent import crisis_response
+from graph.workflow import graph
+
 
 app = FastAPI()
 
@@ -26,16 +28,27 @@ def home():
     }
 
 
+
+
 @app.post("/analyze")
 def analyze(request: AnalyzeRequest):
 
-    result = investigate(request.message)
+    state = {
+        "message": request.message,
+        "investigation": {},
+        "entities": {},
+        "fraud_graph": {},
+        "intelligence": {},
+        "report": {}
+    }
 
-    return result
+    return graph.invoke(state)
+
 
 class CrisisRequest(BaseModel):
     analysis: dict
     user_reply: str
+
 
 @app.post("/crisis")
 def crisis(request: CrisisRequest):
