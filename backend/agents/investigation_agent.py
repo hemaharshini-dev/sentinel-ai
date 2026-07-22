@@ -1,6 +1,6 @@
 from llm import llm
 import json
-
+from utils.json_parser import parse_json
 
 def investigate(message: str):
 
@@ -49,4 +49,4 @@ Do NOT wrap it in markdown.
 
     response = llm.invoke(prompt)
 
-    return json.loads(response.content)
+    return parse_json(response.content)

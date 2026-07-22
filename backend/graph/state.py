@@ -1,13 +1,15 @@
-from typing import TypedDict
+from typing import TypedDict, List, Dict
 
 
 class AgentState(TypedDict):
     message: str
 
-    investigation: dict
+    investigation: Dict
 
-    evidence: dict
+    entities: Dict
 
-    crisis: dict
+    fraud_graph: Dict
 
-    report: dict
+    intelligence: Dict
+
+    report: Dict

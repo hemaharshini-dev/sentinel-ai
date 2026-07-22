@@ -1,0 +1,74 @@
+[
+    {
+        "id": "Complaint-1",
+        "entities": {
+            "phone_numbers": [
+                "9876543210"
+            ],
+            "upi_ids": [
+                "fraud@ybl"
+            ],
+            "government_authorities": [
+                "CBI"
+            ],
+            "amounts": [
+                "50000"
+            ]
+        }
+    },
+    {
+        "id": "Complaint-2",
+        "entities": {
+            "phone_numbers": [
+                "9876543210"
+            ],
+            "upi_ids": [
+                "another@ybl"
+            ],
+            "government_authorities": [
+                "CBI"
+            ],
+            "amounts": [
+                "50000"
+            ]
+        }
+    },
+    {
+        "id": "Complaint-2",
+        "entities": {
+            "phone_numbers": [
+                "9876543210"
+            ],
+            "upi_ids": [
+                "another@ybl"
+            ],
+            "government_authorities": [
+                "CBI"
+            ],
+            "amounts": [
+                "50000"
+            ]
+        }
+    },
+    {
+        "id": "Complaint-f3dafe56",
+        "entities": {
+            "phone_numbers": [
+                "9876543210"
+            ],
+            "upi_ids": [],
+            "government_authorities": [
+                "CBI"
+            ],
+            "amounts": [
+                "\u20b950000"
+            ],
+            "emails": [
+                "fraud@ybl"
+            ],
+            "urls": [],
+            "bank_accounts": [],
+            "telegram_ids": []
+        }
+    }
+]
