@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from llm import llm
 from agents.investigation_agent import investigate
+from agents.crisis_agent import crisis_response
 
 app = FastAPI()
 
@@ -31,3 +32,15 @@ def analyze(request: AnalyzeRequest):
     result = investigate(request.message)
 
     return result
+
+class CrisisRequest(BaseModel):
+    analysis: dict
+    user_reply: str
+
+@app.post("/crisis")
+def crisis(request: CrisisRequest):
+
+    return crisis_response(
+        request.analysis,
+        request.user_reply
+    )

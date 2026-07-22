@@ -5,9 +5,9 @@ import json
 def investigate(message: str):
 
     prompt = f"""
-You are a cyber fraud investigation expert.
+You are Sentinel AI's Investigation Agent.
 
-Analyze the following message.
+Analyze the following suspicious message.
 
 Message:
 {message}
@@ -24,12 +24,27 @@ Schema:
         "",
         "",
         ""
+    ],
+    "next_question": "",
+    "options": [
+        "",
+        ""
     ]
 }}
 
-Do not return markdown.
-Do not return explanation.
-Only JSON.
+Rules:
+
+- Identify the scam type.
+- Explain why it is a scam.
+- Give 3 immediate actions.
+- Ask ONLY ONE important next question that helps protect the victim.
+- If the question is Yes/No, return:
+    "options": ["Yes", "No"]
+- If it requires typing, return:
+    "options": []
+
+Return ONLY JSON.
+Do NOT wrap it in markdown.
 """
 
     response = llm.invoke(prompt)

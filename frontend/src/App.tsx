@@ -3,14 +3,25 @@ import axios from "axios";
 
 function App() {
   const [message, setMessage] = useState("");
-  const [result, setResult] = useState<any>(null);
+  const [analysis, setAnalysis] = useState<any>(null);
+  const [crisis, setCrisis] = useState<any>(null);
 
   const analyze = async () => {
     const response = await axios.post("http://127.0.0.1:8000/analyze", {
       message,
     });
 
-    setResult(response.data);
+    setAnalysis(response.data);
+    setCrisis(null);
+  };
+
+  const handleReply = async (reply: string) => {
+    const response = await axios.post("http://127.0.0.1:8000/crisis", {
+      analysis,
+      user_reply: reply,
+    });
+
+    setCrisis(response.data);
   };
 
   return (
@@ -33,24 +44,60 @@ function App() {
       <br />
       <br />
 
-      {result && (
+      {analysis && (
         <div>
           <h2>Scam Type</h2>
-          <p>{result.scam_type}</p>
+          <p>{analysis.scam_type}</p>
 
           <h2>Summary</h2>
-          <p>{result.summary}</p>
+          <p>{analysis.summary}</p>
 
           <h2>Reason</h2>
-          <p>{result.reason}</p>
+          <p>{analysis.reason}</p>
 
           <h2>Immediate Actions</h2>
 
           <ul>
-            {result.immediate_actions.map((action: string, index: number) => (
-              <li key={index}>{action}</li>
-            ))}
+            {analysis.immediate_actions?.map(
+              (action: string, index: number) => (
+                <li key={index}>{action}</li>
+              ),
+            )}
           </ul>
+
+          <hr />
+
+          <h2>🚨 Stay With Me</h2>
+
+          <p>{analysis.next_question}</p>
+
+          <div style={{ display: "flex", gap: "10px" }}>
+            {analysis.options?.map((option: string) => (
+              <button key={option} onClick={() => handleReply(option)}>
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {crisis && (
+        <div style={{ marginTop: "30px" }}>
+          <hr />
+
+          <h2>Sentinel AI</h2>
+
+          <p>{crisis.message}</p>
+
+          <h3>{crisis.next_question}</h3>
+
+          <div style={{ display: "flex", gap: "10px" }}>
+            {crisis.options?.map((option: string) => (
+              <button key={option} onClick={() => handleReply(option)}>
+                {option}
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>
