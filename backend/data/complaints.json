@@ -152,5 +152,20 @@
             "bank_accounts": [],
             "telegram_ids": []
         }
+    },
+    {
+        "id": "Complaint-cf95658e",
+        "entities": {
+            "phone_numbers": [],
+            "upi_ids": [],
+            "government_authorities": [],
+            "amounts": [
+                "1000"
+            ],
+            "emails": [],
+            "urls": [],
+            "bank_accounts": [],
+            "telegram_ids": []
+        }
     }
 ]

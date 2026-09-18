@@ -1,5 +1,5 @@
 from llm import llm
-import json
+from utils.json_parser import parse_json
 
 
 def crisis_response(analysis, user_reply):
@@ -26,4 +26,4 @@ Return ONLY valid JSON.
 
     response = llm.invoke(prompt)
 
-    return json.loads(response.content)
+    return parse_json(response.content)
