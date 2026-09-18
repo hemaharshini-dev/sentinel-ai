@@ -19,6 +19,9 @@ def save_complaint(complaint):
 
     complaints = load_complaints()
 
+    # Remove any existing entry with the same ID before appending
+    complaints = [c for c in complaints if c["id"] != complaint["id"]]
+
     complaints.append(complaint)
 
     with open(DATA_FILE, "w") as f:

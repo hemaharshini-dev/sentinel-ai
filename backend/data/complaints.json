@@ -34,23 +34,6 @@
         }
     },
     {
-        "id": "Complaint-2",
-        "entities": {
-            "phone_numbers": [
-                "9876543210"
-            ],
-            "upi_ids": [
-                "another@ybl"
-            ],
-            "government_authorities": [
-                "CBI"
-            ],
-            "amounts": [
-                "50000"
-            ]
-        }
-    },
-    {
         "id": "Complaint-f3dafe56",
         "entities": {
             "phone_numbers": [
