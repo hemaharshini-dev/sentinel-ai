@@ -1,156 +1,191 @@
 # Sentinel AI
 
-Sentinel AI is a fraud-analysis platform for suspicious cybercrime complaints. It combines a FastAPI backend, a LangGraph pipeline, and a React + Vite frontend to turn a free-form message into structured intelligence, extracted entities, and a reusable complaint graph.
+Sentinel AI is a prototype fraud-analysis project that reads a suspicious complaint, extracts scam-related entities, checks for similar complaints, and produces a structured report. It is currently implemented as a FastAPI backend, a LangGraph workflow, and a lightweight React + Vite frontend.
 
-## What It Does
+## Current status
 
-The system is built to help you:
+This project is a working MVP/prototype rather than a production-grade fraud platform. The current implementation focuses on:
 
-- analyze a suspicious message or complaint
-- identify the scam pattern and explain why it looks suspicious
-- extract entities such as phone numbers, UPI IDs, email addresses, URLs, bank accounts, and authorities
-- persist complaint data into a graph-friendly store for future matching
-- compare a new complaint against earlier complaints to spot related activity
-- generate a concise intelligence report from the combined findings
+- analyzing a complaint message using an LLM
+- extracting structured entities such as phone numbers, UPI IDs, emails, URLs, amounts, authorities, and Telegram IDs
+- saving complaints to a local JSON dataset
+- finding related complaints by shared entity values
+- returning a final intelligence summary in JSON
+- showing the result in a simple UI dashboard
 
-## How It Works
+## What is implemented
 
-```mermaid
-flowchart LR
-    A[User complaint] --> B[FastAPI /analyze]
-    B --> C[Investigation Agent]
-    C --> D[Entity Extraction Agent]
-    D --> E[Graph Storage]
-    E --> F[Campaign Intelligence]
-    F --> G[Report Agent]
-    G --> H[Frontend dashboard]
-```
+### Backend
 
-The backend sends each complaint through this sequence:
+The backend in [backend/main.py](backend/main.py) exposes a small API:
 
-1. Investigation agent: summarizes the scam, explains the risk, and suggests immediate actions.
-2. Entity extraction agent: pulls structured indicators from the message.
-3. Graph node: stores the complaint in `backend/data/complaints.json`.
-4. Campaign intelligence agent: searches for related complaints using shared entities.
-5. Report agent: produces the final JSON intelligence report.
+- `GET /` — health check endpoint
+- `POST /analyze` — accepts a complaint message and runs the analysis workflow
+- `POST /crisis` — accepts a previous analysis plus a user reply and returns a crisis-safe response JSON
 
-## Project Structure
+The backend uses:
+
+- FastAPI
+- Pydantic models
+- Groq via `langchain_groq`
+- LangGraph workflow orchestration
+- NetworkX for graph-based complaint matching
+
+### LangGraph workflow
+
+The analysis pipeline is defined in [backend/graph/workflow.py](backend/graph/workflow.py) and runs these steps:
+
+1. Investigation agent
+2. Entity extraction agent
+3. Graph persistence step
+4. Campaign intelligence step
+5. Final report generation
+
+The actual node definitions are in [backend/graph/nodes.py](backend/graph/nodes.py).
+
+### Agents
+
+The project currently includes the following agents:
+
+- [backend/agents/investigation_agent.py](backend/agents/investigation_agent.py)
+  - identifies scam type, summary, reason, and immediate actions
+- [backend/agents/entity_agent.py](backend/agents/entity_agent.py)
+  - extracts entities from the message
+- [backend/agents/intelligence_agent.py](backend/agents/intelligence_agent.py)
+  - checks for related complaints using shared entities
+- [backend/agents/report_agent.py](backend/agents/report_agent.py)
+  - builds a final JSON report
+- [backend/agents/crisis_agent.py](backend/agents/crisis_agent.py)
+  - returns a safety-oriented reply based on a prior analysis and the user message
+
+### Data layer
+
+Complaint records are stored in [backend/data/complaints.json](backend/data/complaints.json).
+
+The graph matching logic is implemented in [backend/graph_db/graph_manager.py](backend/graph_db/graph_manager.py). It:
+
+- loads complaint records from JSON
+- builds a NetworkX graph from complaint-to-entity relationships
+- finds similar complaints by matching shared entity values
+
+This is a lightweight prototype graph system, not a production database-backed graph service.
+
+### Frontend
+
+The frontend is a React + TypeScript app built with Vite, located in [frontend/src/App.tsx](frontend/src/App.tsx).
+
+It lets the user:
+
+- paste a suspicious complaint
+- click Analyze Complaint
+- send the text to the backend
+- view the investigation, entities, intelligence, and final report in one dashboard
+
+The package scripts are defined in [frontend/package.json](frontend/package.json):
+
+- `npm run dev` — run the Vite dev server
+- `npm run build` — build the frontend
+- `npm run lint` — lint the app
+- `npm run preview` — preview the production build
+
+## Project structure
 
 ```text
 sentinel-ai/
   backend/
-    main.py                FastAPI app and API routes
-    llm.py                 Groq-backed LLM client
-    agents/                Prompt-driven analysis agents
-    graph/                 LangGraph workflow and shared state
-    graph_db/              Complaint storage and graph matching
-    utils/                 JSON parsing helper
-    data/complaints.json   Persistent complaint dataset
+    main.py                    FastAPI app and API routes
+    llm.py                     Groq-backed LLM client
+    agents/                    analysis agents for investigation, entities, intelligence, reports, and crisis support
+    graph/                     LangGraph workflow and state definitions
+    graph_db/                  complaint storage and related-match logic
+    utils/                     JSON parsing helpers
+    data/complaints.json       local complaint dataset used by the app
+    test_graph.py              smoke test for the workflow
+    test_graph_db.py           smoke test for graph matching
   frontend/
-    src/                   React UI
-    public/                Static frontend assets
-    package.json           Frontend scripts and dependencies
-  assets/                  Project assets placeholder
-  docs/                    Documentation placeholder
+    src/                       React frontend source
+    public/                    static assets
+    package.json               frontend dependencies and scripts
+    vite.config.ts            Vite config
+  assets/                     currently empty
+  docs/                       currently empty
+  README.md                   project overview
 ```
 
-## Backend Overview
+## How the current flow works
 
-The backend exposes a small API:
-
-- `GET /` - health check
-- `POST /analyze` - runs the full complaint analysis workflow
-- `POST /crisis` - generates a safety-oriented follow-up response from a prior analysis and user reply
-
-The main orchestration lives in `backend/graph/workflow.py`, which composes the nodes defined in `backend/graph/nodes.py`.
-
-### Backend Dependencies
-
-The backend code imports the following direct Python packages:
-
-- `fastapi`
-- `uvicorn`
-- `pydantic`
-- `python-dotenv`
-- `langchain-groq`
-- `langgraph`
-- `networkx`
-
-## Frontend Overview
-
-The frontend is a simple React + TypeScript dashboard built with Vite. It lets a user paste a suspicious message, sends it to `POST /analyze`, and renders the returned JSON in separate sections for investigation, entities, intelligence, and report output.
-
-Frontend scripts are defined in `frontend/package.json`:
-
-- `npm run dev` - start the Vite dev server
-- `npm run build` - type-check and build for production
-- `npm run lint` - run ESLint
-- `npm run preview` - preview the production build
-
-## Prerequisites
-
-- Python installed locally
-- Node.js and npm installed locally
-- A Groq API key available as `GROQ_API_KEY`
+1. The user enters a suspicious message in the frontend.
+2. The frontend posts it to the backend at `http://127.0.0.1:8000/analyze`.
+3. The backend runs the LangGraph pipeline.
+4. The investigation agent assesses the scam.
+5. The entity agent extracts structured indicators from the text.
+6. The graph step saves the complaint to [backend/data/complaints.json](backend/data/complaints.json).
+7. The intelligence step checks related complaints by shared values.
+8. The report agent produces a final JSON report.
+9. The frontend displays all JSON sections in the dashboard.
 
 ## Setup
 
 ### 1. Backend
 
-From the `backend` folder:
+From the project root:
 
 ```bash
+cd backend
 python -m venv .venv
 .venv\Scripts\activate
 pip install fastapi uvicorn pydantic python-dotenv langchain-groq langgraph networkx
+```
+
+Then make sure a `GROQ_API_KEY` is available in your environment or in a `.env` file inside the backend folder.
+
+Run the backend:
+
+```bash
 uvicorn main:app --reload
 ```
 
-The backend expects `GROQ_API_KEY` to be available in `backend/.env` or your active shell environment.
-
 ### 2. Frontend
 
-From the `frontend` folder:
+From the project root:
 
 ```bash
+dcd frontend
 npm install
 npm run dev
 ```
 
-The UI expects the backend to be running at `http://127.0.0.1:8000`.
+Then open the frontend in the browser. The frontend is currently configured to call the backend at `http://127.0.0.1:8000`.
 
-## Usage
+## Important implementation notes
 
-1. Start the backend.
-2. Start the frontend.
-3. Open the Vite app in your browser.
-4. Paste a suspicious message into the analysis box.
-5. Review the extracted entities, campaign intelligence, and final report.
+- The backend CORS configuration in [backend/main.py](backend/main.py) currently allows `http://localhost:5173`.
+- The frontend is currently hardcoded to call `http://127.0.0.1:8000/analyze` in [frontend/src/App.tsx](frontend/src/App.tsx).
+- If you run the frontend on a different host/port, update both the frontend URL and the backend CORS origin to match.
+- The complaint dataset in [backend/data/complaints.json](backend/data/complaints.json) is demo/sample data and includes repeated IDs from testing.
+- The project uses local JSON persistence and NetworkX instead of a dedicated graph database service.
+- The app is still a prototype and is designed for demonstration and experimentation, not production deployment.
 
-## Example Input
+## Example input
 
-The system is designed for text such as:
+This prototype is intended for messages like:
 
 - fake government officer scams
 - urgent transfer requests
 - UPI payment fraud messages
-- phishing links or contact details
+- suspicious emails, URLs, or Telegram IDs
 - repeated complaint patterns across multiple victims
-
-## Notes
-
-- Complaint records are appended to `backend/data/complaints.json`.
-- Entity matching is based on shared values across complaints, not on a full graph database server.
-- The frontend currently posts directly to `http://127.0.0.1:8000/analyze`, so the backend origin must stay aligned with the CORS settings in `backend/main.py`.
-- `assets/` and `docs/` are currently empty placeholders.
 
 ## Troubleshooting
 
-- If the frontend cannot reach the backend, confirm that `uvicorn main:app --reload` is running from the `backend` directory.
-- If requests fail with an authentication or model error, check that `GROQ_API_KEY` is set correctly.
-- If no related complaints are found, the campaign intelligence step will return an empty or low-match result by design.
+- If the frontend cannot connect to the backend, confirm the backend is running with `uvicorn main:app --reload` in the backend folder.
+- If the analysis fails, check whether `GROQ_API_KEY` is set correctly.
+- If no related complaints are found, that can happen naturally when the dataset is empty or when no entity overlap exists.
+- If you see CORS errors, align the frontend URL and backend allowed origin settings.
 
-## Development Tips
+## Development notes
 
-- Use `backend/test_graph.py` and `backend/test_graph_db.py` as quick smoke tests for the workflow and complaint matching logic.
-- The LLM outputs are parsed as JSON, so prompts are intentionally strict about returning valid JSON only.
+- [backend/test_graph.py](backend/test_graph.py) is a quick workflow smoke test.
+- [backend/test_graph_db.py](backend/test_graph_db.py) tests the matching logic against sample complaints.
+- The LLM responses are parsed as JSON, so the prompts are designed to return strict structured output.
+- The project currently relies on heuristic entity matching from stored complaint records rather than a full graph database or advanced deduplication engine.
