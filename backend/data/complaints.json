@@ -154,5 +154,20 @@
             "bank_accounts": [],
             "telegram_ids": []
         }
+    },
+    {
+        "id": "Complaint-87680072",
+        "entities": {
+            "phone_numbers": [],
+            "upi_ids": [],
+            "government_authorities": [],
+            "amounts": [
+                "16,000"
+            ],
+            "emails": [],
+            "urls": [],
+            "bank_accounts": [],
+            "telegram_ids": []
+        }
     }
 ]
