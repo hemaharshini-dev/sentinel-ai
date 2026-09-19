@@ -51,6 +51,7 @@ def analyze(request: AnalyzeRequest):
         logger.info("Received analysis request")
         state = {
             "message": request.message,
+            "language": {},
             "investigation": {},
             "entities": {},
             "fraud_graph": {},

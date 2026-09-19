@@ -8,9 +8,19 @@ from agents.entity_agent import extract_entities
 from agents.intelligence_agent import analyze_campaign
 from agents.report_agent import generate_report
 from agents.risk_agent import assess_risk
+from agents.language_agent import detect_and_translate
 from graph_db.graph_manager import save_complaint
 
 logger = logging.getLogger(__name__)
+
+
+def language_node(state: AgentState):
+    logger.info("Running Language Detection Agent")
+    result = detect_and_translate(state["message"])
+    state["language"] = result
+    # Replace message with English version so all downstream agents work in English
+    state["message"] = result["translated_message"]
+    return state
 
 
 def investigation_node(state: AgentState):
