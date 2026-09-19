@@ -9,4 +9,5 @@ class AgentState(TypedDict):
     fraud_graph: Dict
     intelligence: Dict
     risk: Dict
+    guidance: Dict
     report: Dict

@@ -9,6 +9,7 @@ from agents.intelligence_agent import analyze_campaign
 from agents.report_agent import generate_report
 from agents.risk_agent import assess_risk
 from agents.language_agent import detect_and_translate
+from agents.guidance_agent import generate_guidance
 from graph_db.graph_manager import save_complaint
 
 logger = logging.getLogger(__name__)
@@ -63,6 +64,15 @@ def risk_node(state):
         state["investigation"],
         state["entities"],
         state["intelligence"],
+    )
+    return state
+
+
+def guidance_node(state):
+    logger.info("Running Victim Guidance Agent")
+    state["guidance"] = generate_guidance(
+        state["investigation"],
+        state["entities"],
     )
     return state
 

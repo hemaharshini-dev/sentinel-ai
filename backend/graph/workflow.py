@@ -9,6 +9,7 @@ from graph.nodes import (
     graph_node,
     intelligence_node,
     risk_node,
+    guidance_node,
     report_node,
 )
 
@@ -20,6 +21,7 @@ builder.add_node("entity", entity_node)
 builder.add_node("graph", graph_node)
 builder.add_node("intelligence", intelligence_node)
 builder.add_node("risk", risk_node)
+builder.add_node("guidance", guidance_node)
 builder.add_node("report", report_node)
 
 builder.set_entry_point("language")
@@ -29,7 +31,8 @@ builder.add_edge("investigation", "entity")
 builder.add_edge("entity", "graph")
 builder.add_edge("graph", "intelligence")
 builder.add_edge("intelligence", "risk")
-builder.add_edge("risk", "report")
+builder.add_edge("risk", "guidance")
+builder.add_edge("guidance", "report")
 builder.add_edge("report", END)
 
 graph = builder.compile()
