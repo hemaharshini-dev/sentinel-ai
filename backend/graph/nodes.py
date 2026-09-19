@@ -7,6 +7,7 @@ from agents.investigation_agent import investigate
 from agents.entity_agent import extract_entities
 from agents.intelligence_agent import analyze_campaign
 from agents.report_agent import generate_report
+from agents.risk_agent import assess_risk
 from graph_db.graph_manager import save_complaint
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,16 @@ def graph_node(state):
 def intelligence_node(state):
     logger.info("Running Campaign Intelligence Agent")
     state["intelligence"] = analyze_campaign(state["entities"])
+    return state
+
+
+def risk_node(state):
+    logger.info("Running Risk Scoring Agent")
+    state["risk"] = assess_risk(
+        state["investigation"],
+        state["entities"],
+        state["intelligence"],
+    )
     return state
 
 

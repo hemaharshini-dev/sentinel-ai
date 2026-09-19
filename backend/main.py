@@ -55,6 +55,7 @@ def analyze(request: AnalyzeRequest):
             "entities": {},
             "fraud_graph": {},
             "intelligence": {},
+            "risk": {},
             "report": {}
         }
         result = graph.invoke(state)
