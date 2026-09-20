@@ -10,7 +10,9 @@ from agents.report_agent import generate_report
 from agents.risk_agent import assess_risk
 from agents.language_agent import detect_and_translate
 from agents.guidance_agent import generate_guidance
+from agents.campaign_agent import profile_campaign
 from graph_db.graph_manager import save_complaint
+from utils.normalizers import normalize_entities
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +21,6 @@ def language_node(state: AgentState):
     logger.info("Running Language Detection Agent")
     result = detect_and_translate(state["message"])
     state["language"] = result
-    # Replace message with English version so all downstream agents work in English
     state["message"] = result["translated_message"]
     return state
 
@@ -38,15 +39,15 @@ def entity_node(state: AgentState):
 
 def graph_node(state):
     logger.info("Running Fraud Graph Builder")
-
+    normalized_entities = normalize_entities(dict(state["entities"]))
+    state["entities"] = normalized_entities
     complaint = {
         "id": f"Complaint-{uuid.uuid4().hex[:8]}",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "scam_type": state["investigation"].get("scam_type", "unknown"),
         "raw_message": state["message"],
-        "entities": state["entities"]
+        "entities": normalized_entities
     }
-
     save_complaint(complaint)
     state["fraud_graph"] = complaint
     return state
@@ -66,6 +67,22 @@ def risk_node(state):
         state["intelligence"],
     )
     return state
+
+
+def campaign_node(state):
+    logger.info("Running Campaign Profiling Agent")
+    state["campaign"] = profile_campaign(
+        state["intelligence"],
+        state["entities"],
+    )
+    return state
+
+
+def route_after_risk(state) -> str:
+    """Conditional router — run campaign profiling only when a campaign is detected."""
+    if state["intelligence"].get("campaign_detected", False):
+        return "campaign"
+    return "guidance"
 
 
 def guidance_node(state):
