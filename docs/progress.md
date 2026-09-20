@@ -83,14 +83,16 @@
 
 ### Performance
 - [x] LLM in-memory cache — identical prompts skip the API call entirely
+- [x] Persistent SQLite LLM cache (`utils/cache.py`) — cache survives server restarts, built on `langchain_core.BaseCache` with no deprecated dependencies
+
+### Code Quality
+- [x] Pydantic structured outputs — all 6 agents use `llm.with_structured_output()` with typed schemas in `agents/schemas.py`; `parse_json` no longer used in any agent
 
 ---
 
 ## ⏳ Pending
 
-### Low Priority
-- [ ] Replace `InMemoryCache` with `SQLiteCache` — cache survives restarts (requires `langchain-community`)
-- [ ] Pydantic structured outputs — replace `parse_json` with `llm.with_structured_output()` for type-safe agent responses
+None — all planned improvements are complete.
 
 ---
 
@@ -107,6 +109,7 @@
 | Frontend          | 14  | 0 |
 | Observability     | 3   | 0 |
 | Testing           | 1   | 0 |
-| Performance       | 1   | 0 |
-| Low priority      | 0   | 2 |
-| **Total**         | **56** | **2** |
+| Performance       | 2   | 0 |
+| Code quality      | 1   | 0 |
+| Low priority      | 0   | 0 |
+| **Total**         | **58** | **0** |

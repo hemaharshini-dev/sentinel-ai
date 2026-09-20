@@ -6,7 +6,7 @@ Sentinel AI is a fraud network intelligence platform that analyzes suspicious cy
 
 ## Current Status
 
-Fully working beyond MVP. The pipeline has 9 agents running in sequence (including a conditional campaign profiling agent), a SQLite complaint database, confidence-scored entity extraction, rate limiting, a rebuilt React UI with structured cards, analysis history, and a crisis chat panel. LangSmith tracing and multi-language support included. 22 unit tests passing.
+Fully working beyond MVP. The pipeline has 9 agents running in sequence (including a conditional campaign profiling agent), a SQLite complaint database, confidence-scored entity extraction, persistent LLM caching, Pydantic-validated structured outputs, rate limiting, a rebuilt React UI with structured cards, analysis history, and a crisis chat panel. LangSmith tracing and multi-language support included. 22 unit tests passing, 0 pending improvements.
 
 ---
 
@@ -34,12 +34,14 @@ Language → Investigation → Entity → Graph → Intelligence → Risk → [C
 
 ### Backend
 
-- **Framework:** FastAPI
+- **Framework:** FastAPI + slowapi (rate limiting)
 - **LLM:** Groq (`openai/gpt-oss-20b`, `temperature=0`)
-- **Orchestration:** LangGraph
+- **LLM outputs:** Pydantic structured outputs via `with_structured_output()` — all agents type-safe
+- **LLM caching:** Persistent SQLite cache (`utils/cache.py`) — survives restarts, no API calls on repeated prompts
+- **Orchestration:** LangGraph (conditional edges for campaign profiling)
 - **Database:** SQLite (`data/complaints.db`)
-- **Graph matching:** NetworkX (`MultiDiGraph`)
-- **Language detection:** `langdetect` (offline)
+- **Graph matching:** NetworkX (`MultiDiGraph`) with dirty-flag caching
+- **Language detection:** `langdetect` (offline, 55 languages)
 - **Tracing:** LangSmith (free tier)
 
 ### Frontend
@@ -92,28 +94,28 @@ Language → Investigation → Entity → Graph → Intelligence → Risk → [C
 Detects input language using `langdetect`. If not English, uses the LLM to translate. Stores original language and message. All downstream agents receive English regardless of input language.
 
 ### `investigation_agent.py`
-Classifies the scam type, writes a 2–3 sentence summary, explains the suspicious signals, and recommends immediate actions.
+Classifies the scam type, writes a 2–3 sentence summary, explains the suspicious signals, and recommends immediate actions. Uses `InvestigationResult` Pydantic schema via `with_structured_output`.
 
 ### `entity_agent.py`
-Extracts structured indicators from unstructured complaint text. Pipeline: LLM extraction → UPI/email fix → deduplication → normalization (phone formats, amounts, URLs) → confidence scoring. Each entity list returns `{"value", "confidence"}` objects. `get_high_confidence_values()` and `get_flat_values()` helpers are used by downstream agents.
+Extracts structured indicators from unstructured complaint text. Pipeline: LLM extraction (`EntityResult` schema) → UPI/email fix → deduplication → normalization (phone formats, amounts, URLs) → confidence scoring. Each entity list returns `{"value", "confidence"}` objects. `get_high_confidence_values()` and `get_flat_values()` helpers are used by downstream agents.
 
 ### `intelligence_agent.py`
 Queries the NetworkX graph for related complaints by shared entity values. Uses only high/medium confidence entities for matching to reduce false positives. Returns matched complaint IDs, match count, and a campaign detection flag.
 
 ### `campaign_agent.py`
-Runs only when `campaign_detected` is `True`. Names the campaign, identifies signature tactics across matched complaints, and lists shared indicators. Wired via a conditional edge in the LangGraph workflow — skipped entirely for isolated incidents.
+Runs only when `campaign_detected` is `True`. Names the campaign, identifies signature tactics across matched complaints, and lists shared indicators. Uses `CampaignResult` schema. Wired via a conditional edge in the LangGraph workflow — skipped entirely for isolated incidents.
 
 ### `risk_agent.py`
-Scores each complaint deterministically (0–100) based on signals: government authority impersonation (+25), UPI transfer vector (+15), phone number (+10), Telegram (+10), URL (+10), high-value amount (+10), pressure tactics like "arrest" (+15), campaign detected (+20), large campaign 5+ (+10). The LLM is only used to write the `risk_factors` explanation — the number is always consistent.
+Scores each complaint deterministically (0–100) based on signals: government authority impersonation (+25), UPI transfer vector (+15), phone number (+10), Telegram (+10), URL (+10), high-value amount (+10), pressure tactics like "arrest" (+15), campaign detected (+20), large campaign 5+ (+10). Uses `RiskFactorsResult` schema for the LLM explanation — the numeric score is always deterministic.
 
 ### `guidance_agent.py`
-Generates scam-specific victim guidance using the actual extracted entities. Helpline (`1930`) and portal (`https://cybercrime.gov.in`) are hardcoded constants — never left to the LLM.
+Generates scam-specific victim guidance using the actual extracted entities. Uses `GuidanceResult` schema. Helpline (`1930`) and portal (`https://cybercrime.gov.in`) are hardcoded constants — never left to the LLM.
 
 ### `report_agent.py`
-Generates the final intelligence report with executive summary, campaign context, evidence list, and recommended actions.
+Generates the final intelligence report with executive summary, campaign context, evidence list, and recommended actions. Uses `ReportResult` schema.
 
 ### `crisis_agent.py`
-Powers the `/crisis` endpoint. Takes the full analysis and a user reply, returns a safe contextual response with `message`, `next_question`, and `options` for quick replies.
+Powers the `/crisis` endpoint. Takes the full analysis and a user reply, returns a safe contextual response. Uses `CrisisResult` schema with `message`, `next_question`, and `options` fields.
 
 ---
 
@@ -167,6 +169,7 @@ sentinel-ai/
     main.py                    FastAPI app, routes, logging, input validation
     llm.py                     Groq LLM client (openai/gpt-oss-20b, temperature=0)
     agents/
+      schemas.py               Pydantic output schemas for all agents
       language_agent.py        Language detection and translation
       investigation_agent.py   Scam classification and summary
       entity_agent.py          Entity extraction, normalization, confidence scoring
@@ -183,11 +186,18 @@ sentinel-ai/
     graph_db/
       graph_manager.py         SQLite CRUD + NetworkX graph with dirty-flag caching
     utils/
-      json_parser.py           Resilient JSON parser with fallback extraction
+      json_parser.py           Resilient JSON parser (utility, no longer used in main pipeline)
       normalizers.py           Entity value normalization (phone, amount, URL, UPI, email)
+      cache.py                 Persistent SQLite LLM cache (survives restarts)
     data/
       complaints.db            SQLite complaint database
       complaints.json          Legacy JSON backup (can be deleted)
+    tests/
+      test_entity_agent.py     Entity extraction, confidence scoring tests
+      test_json_parser.py      JSON parser resilience tests
+      test_normalizers.py      Entity normalization tests
+      test_risk_agent.py       Risk scoring and severity threshold tests
+      test_graph_manager.py    SQLite CRUD and graph matching tests
     .env                       Local secrets (gitignored)
     .env.example               Template for contributors
   frontend/
@@ -271,7 +281,7 @@ The pipeline will classify this as a Digital Arrest Scam, score it CRITICAL, ext
 ## Troubleshooting
 
 - **Backend not starting** — confirm `GROQ_API_KEY` is set in `backend/.env`
-- **Analysis fails** — check the backend terminal for logged errors; `json_parser.py` will show the raw LLM output if parsing fails
+- **Analysis fails** — check the backend terminal for logged errors; structured output validation errors will show the field that failed
 - **CORS errors** — confirm the frontend is on `http://localhost:5173` and the backend CORS config matches
 - **No related complaints** — normal when the database is empty or no entity overlap exists
 - **LangSmith 403 errors** — add `LANGSMITH_ENDPOINT=https://apac.api.smith.langchain.com` to `.env` if your account is on the APAC server
