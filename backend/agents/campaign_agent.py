@@ -5,7 +5,7 @@ from utils.json_parser import parse_json
 logger = logging.getLogger(__name__)
 
 
-def profile_campaign(intelligence: dict, entities: dict) -> dict:
+def profile_campaign(intelligence: dict) -> dict:
     """
     Runs only when a campaign is detected (match_count >= 2).
     Uses the LLM to name the campaign, identify signature tactics,

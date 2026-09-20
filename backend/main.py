@@ -2,7 +2,7 @@ import logging
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -43,7 +43,8 @@ app.add_middleware(
 class AnalyzeRequest(BaseModel):
     message: str
 
-    @validator("message")
+    @field_validator("message")
+    @classmethod
     def validate_message(cls, v):
         v = v.strip()
         if not v:
@@ -57,7 +58,8 @@ class CrisisRequest(BaseModel):
     analysis: dict
     user_reply: str
 
-    @validator("user_reply")
+    @field_validator("user_reply")
+    @classmethod
     def validate_reply(cls, v):
         v = v.strip()
         if not v:

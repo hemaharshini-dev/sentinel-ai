@@ -1,6 +1,7 @@
 import logging
 from llm import llm
 from utils.json_parser import parse_json
+from agents.entity_agent import get_flat_values
 
 logger = logging.getLogger(__name__)
 
@@ -17,23 +18,26 @@ def generate_guidance(investigation: dict, entities: dict) -> dict:
 
     scam_type = investigation.get("scam_type", "Unknown Fraud")
 
+    # Flatten confidence-annotated entities to plain strings for display
+    flat = get_flat_values(entities)
+
     entity_summary_parts = []
-    if entities.get("phone_numbers"):
-        entity_summary_parts.append(f"Phone numbers: {', '.join(entities['phone_numbers'])}")
-    if entities.get("upi_ids"):
-        entity_summary_parts.append(f"UPI IDs: {', '.join(entities['upi_ids'])}")
-    if entities.get("emails"):
-        entity_summary_parts.append(f"Emails: {', '.join(entities['emails'])}")
-    if entities.get("urls"):
-        entity_summary_parts.append(f"URLs: {', '.join(entities['urls'])}")
-    if entities.get("bank_accounts"):
-        entity_summary_parts.append(f"Bank accounts: {', '.join(entities['bank_accounts'])}")
-    if entities.get("telegram_ids"):
-        entity_summary_parts.append(f"Telegram IDs: {', '.join(entities['telegram_ids'])}")
-    if entities.get("amounts"):
-        entity_summary_parts.append(f"Amounts involved: {', '.join(entities['amounts'])}")
-    if entities.get("government_authorities"):
-        entity_summary_parts.append(f"Impersonated authorities: {', '.join(entities['government_authorities'])}")
+    if flat.get("phone_numbers"):
+        entity_summary_parts.append(f"Phone numbers: {', '.join(flat['phone_numbers'])}")
+    if flat.get("upi_ids"):
+        entity_summary_parts.append(f"UPI IDs: {', '.join(flat['upi_ids'])}")
+    if flat.get("emails"):
+        entity_summary_parts.append(f"Emails: {', '.join(flat['emails'])}")
+    if flat.get("urls"):
+        entity_summary_parts.append(f"URLs: {', '.join(flat['urls'])}")
+    if flat.get("bank_accounts"):
+        entity_summary_parts.append(f"Bank accounts: {', '.join(flat['bank_accounts'])}")
+    if flat.get("telegram_ids"):
+        entity_summary_parts.append(f"Telegram IDs: {', '.join(flat['telegram_ids'])}")
+    if flat.get("amounts"):
+        entity_summary_parts.append(f"Amounts involved: {', '.join(flat['amounts'])}")
+    if flat.get("government_authorities"):
+        entity_summary_parts.append(f"Impersonated authorities: {', '.join(flat['government_authorities'])}")
 
     entity_summary = "\n".join(entity_summary_parts) if entity_summary_parts else "No specific entities extracted."
 

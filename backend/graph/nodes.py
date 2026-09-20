@@ -12,7 +12,7 @@ from agents.language_agent import detect_and_translate
 from agents.guidance_agent import generate_guidance
 from agents.campaign_agent import profile_campaign
 from graph_db.graph_manager import save_complaint
-from utils.normalizers import normalize_entities
+from agents.entity_agent import get_flat_values
 
 logger = logging.getLogger(__name__)
 
@@ -39,15 +39,18 @@ def entity_node(state: AgentState):
 
 def graph_node(state):
     logger.info("Running Fraud Graph Builder")
-    normalized_entities = normalize_entities(dict(state["entities"]))
-    state["entities"] = normalized_entities
+
+    # Store flat string values in DB — confidence dicts are for pipeline use only
+    flat_entities = get_flat_values(state["entities"])
+
     complaint = {
         "id": f"Complaint-{uuid.uuid4().hex[:8]}",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "scam_type": state["investigation"].get("scam_type", "unknown"),
         "raw_message": state["message"],
-        "entities": normalized_entities
+        "entities": flat_entities
     }
+
     save_complaint(complaint)
     state["fraud_graph"] = complaint
     return state
@@ -71,10 +74,7 @@ def risk_node(state):
 
 def campaign_node(state):
     logger.info("Running Campaign Profiling Agent")
-    state["campaign"] = profile_campaign(
-        state["intelligence"],
-        state["entities"],
-    )
+    state["campaign"] = profile_campaign(state["intelligence"])
     return state
 
 

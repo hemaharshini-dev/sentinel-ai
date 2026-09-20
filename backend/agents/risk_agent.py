@@ -1,6 +1,7 @@
 import logging
 from llm import llm
 from utils.json_parser import parse_json
+from agents.entity_agent import get_flat_values
 
 logger = logging.getLogger(__name__)
 
@@ -86,8 +87,9 @@ def _get_severity(score: int) -> str:
 
 
 def assess_risk(investigation: dict, entities: dict, intelligence: dict) -> dict:
-
-    score, triggered_signals = _compute_score(investigation, entities, intelligence)
+    # Flatten confidence-annotated entities to plain string lists for scoring
+    flat = get_flat_values(entities)
+    score, triggered_signals = _compute_score(investigation, flat, intelligence)
     severity = _get_severity(score)
 
     logger.info(f"Risk score computed: {score} ({severity})")

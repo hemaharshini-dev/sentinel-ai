@@ -6,7 +6,7 @@ Sentinel AI is a fraud network intelligence platform that analyzes suspicious cy
 
 ## Current Status
 
-Fully working beyond MVP. The pipeline has 8 agents running in sequence, a SQLite complaint database, a rebuilt React UI with structured cards and a crisis chat panel, LangSmith tracing, and multi-language support.
+Fully working beyond MVP. The pipeline has 9 agents running in sequence (including a conditional campaign profiling agent), a SQLite complaint database, confidence-scored entity extraction, rate limiting, a rebuilt React UI with structured cards, analysis history, and a crisis chat panel. LangSmith tracing and multi-language support included. 22 unit tests passing.
 
 ---
 
@@ -17,19 +17,20 @@ Fully working beyond MVP. The pipeline has 8 agents running in sequence, a SQLit
 Every `/analyze` request runs this sequence:
 
 ```
-Language → Investigation → Entity → Graph → Intelligence → Risk → Guidance → Report
+Language → Investigation → Entity → Graph → Intelligence → Risk → [Campaign?] → Guidance → Report
 ```
 
 | Step | Agent | What it does |
 |---|---|---|
 | 1 | Language Agent | Detects language, translates to English if needed (Hindi, Tamil, Telugu, etc.) |
 | 2 | Investigation Agent | Identifies scam type, writes summary, explains why it's suspicious |
-| 3 | Entity Agent | Extracts phone numbers, UPI IDs, emails, URLs, bank accounts, Telegram IDs, amounts |
-| 4 | Graph Node | Saves complaint to SQLite with timestamp, scam type, raw message, entities |
-| 5 | Intelligence Agent | Matches against historical complaints via NetworkX graph, detects campaigns |
+| 3 | Entity Agent | Extracts and normalizes entities, assigns confidence scores (high/medium/low) |
+| 4 | Graph Node | Saves flat entity values to SQLite with timestamp, scam type, raw message |
+| 5 | Intelligence Agent | Matches against historical complaints using high/medium confidence entities only |
 | 6 | Risk Agent | Scores complaint 0–100 using deterministic signals, assigns LOW/MEDIUM/HIGH/CRITICAL |
-| 7 | Guidance Agent | Generates scam-specific victim steps, DO NOT list, evidence checklist |
-| 8 | Report Agent | Produces executive summary, campaign summary, recommended actions |
+| 7 | Campaign Agent | Names the campaign and identifies signature tactics — **runs only when campaign detected** |
+| 8 | Guidance Agent | Generates scam-specific victim steps, DO NOT list, evidence checklist |
+| 9 | Report Agent | Produces executive summary, campaign summary, recommended actions |
 
 ### Backend
 
@@ -54,6 +55,10 @@ Language → Investigation → Entity → Graph → Intelligence → Risk → Gu
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | `/` | Health check |
+| GET | `/health` | Deep health check — DB reachable, complaint count |
+| GET | `/stats` | Total complaints and breakdown by scam type |
+| GET | `/complaints` | Paginated complaint list (id, created_at, scam_type) |
+| GET | `/complaints/{id}` | Full detail for a single complaint |
 | POST | `/analyze` | Run full pipeline on a complaint message |
 | POST | `/crisis` | Crisis companion — context-aware follow-up response |
 
@@ -67,14 +72,17 @@ Language → Investigation → Entity → Graph → Intelligence → Risk → Gu
 {
   "language":    { "original_language", "was_translated", "original_message", "translated_message" },
   "investigation": { "scam_type", "summary", "reason", "immediate_actions" },
-  "entities":    { "phone_numbers", "upi_ids", "emails", "urls", "bank_accounts", "telegram_ids", "amounts", "government_authorities" },
+  "entities":    { "phone_numbers": [{"value","confidence"}], "upi_ids": [...], ... },
   "fraud_graph": { "id", "created_at", "scam_type", "raw_message", "entities" },
   "intelligence":{ "matched_complaints", "match_count", "campaign_detected" },
   "risk":        { "risk_score", "severity", "risk_factors" },
+  "campaign":    { "campaign_name", "estimated_victims", "signature_tactics", "shared_entities", "threat_level" },
   "guidance":    { "helpline", "portal", "steps", "do_not", "preserve_evidence" },
   "report":      { "executive_summary", "campaign_summary", "evidence", "recommended_actions" }
 }
 ```
+
+> `campaign` is only populated when `intelligence.campaign_detected` is `true`. Each entity list contains `{"value": string, "confidence": "high"|"medium"|"low"}` objects.
 
 ---
 
@@ -87,7 +95,7 @@ Detects input language using `langdetect`. If not English, uses the LLM to trans
 Classifies the scam type, writes a 2–3 sentence summary, explains the suspicious signals, and recommends immediate actions.
 
 ### `entity_agent.py`
-Extracts structured indicators from unstructured complaint text. Includes a post-processing step that fixes UPI ID / email misclassification (e.g. `fraud@ybl` correctly lands in `upi_ids`, not `emails`) and deduplicates all entity lists.
+Extracts structured indicators from unstructured complaint text. Pipeline: LLM extraction → UPI/email fix → deduplication → normalization (phone formats, amounts, URLs) → confidence scoring. Each entity list returns `{"value", "confidence"}` objects. `get_high_confidence_values()` and `get_flat_values()` helpers are used by downstream agents.
 
 ### `intelligence_agent.py`
 Queries the NetworkX graph for related complaints by shared entity values. Uses only high/medium confidence entities for matching to reduce false positives. Returns matched complaint IDs, match count, and a campaign detection flag.
@@ -138,14 +146,16 @@ The `graph_db/graph_manager.py` module handles all DB operations and graph build
 Located in `frontend/src/App.tsx`. Key components:
 
 - **Risk Badge** — colored CRITICAL / HIGH / MEDIUM / LOW badge shown at the top of results
-- **Entity Badges** — colored chips per entity type (phone = blue, UPI = green, URL = red, etc.)
+- **Entity Badges** — colored chips per entity type; faded opacity for low-confidence extractions
 - **Intelligence Card** — campaign alert banner + linked complaint list
+- **Campaign Profile Card** — campaign name, threat level, signature tactics, shared indicators (shown only when campaign detected)
 - **Guidance Card** — steps, DO NOT list, evidence checklist, hardcoded helpline and portal
 - **Report Card** — executive summary, recommended actions, copy-to-clipboard button
 - **Crisis Companion** — chat panel pre-loaded with analysis context, quick-reply option buttons
 - **Language Banner** — shown when complaint was auto-translated
 - **Loading Skeletons** — 3 placeholder cards while analysis runs
 - **Inline error messages** — no `alert()` popups
+- **Analysis History** — collapsible sidebar of last 10 analyses stored in `localStorage`
 
 ---
 
@@ -159,8 +169,9 @@ sentinel-ai/
     agents/
       language_agent.py        Language detection and translation
       investigation_agent.py   Scam classification and summary
-      entity_agent.py          Entity extraction with UPI/email fix and deduplication
-      intelligence_agent.py    Campaign detection via graph matching
+      entity_agent.py          Entity extraction, normalization, confidence scoring
+      intelligence_agent.py    Campaign detection via graph matching (high/medium confidence only)
+      campaign_agent.py        Campaign profiling — runs conditionally when campaign detected
       risk_agent.py            Deterministic risk scoring (0-100)
       guidance_agent.py        Scam-specific victim guidance
       report_agent.py          Final intelligence report
@@ -173,6 +184,7 @@ sentinel-ai/
       graph_manager.py         SQLite CRUD + NetworkX graph with dirty-flag caching
     utils/
       json_parser.py           Resilient JSON parser with fallback extraction
+      normalizers.py           Entity value normalization (phone, amount, URL, UPI, email)
     data/
       complaints.db            SQLite complaint database
       complaints.json          Legacy JSON backup (can be deleted)
@@ -202,7 +214,7 @@ cd backend
 python -m venv .venv
 .venv\Scripts\activate        # Windows
 # source .venv/bin/activate   # macOS/Linux
-pip install fastapi uvicorn pydantic python-dotenv langchain-groq langgraph networkx langdetect langsmith
+pip install fastapi uvicorn pydantic python-dotenv langchain-groq langgraph networkx langdetect langsmith slowapi
 ```
 
 Copy `.env.example` to `.env` and fill in your keys:
@@ -219,6 +231,16 @@ Run:
 ```bash
 uvicorn main:app --reload
 ```
+
+### Run tests
+
+```bash
+cd backend
+.venv\Scripts\pytest tests\ -v    # Windows
+# .venv/bin/pytest tests/ -v      # macOS/Linux
+```
+
+22 unit tests covering entity extraction, JSON parsing, risk scoring, and graph manager.
 
 ### Frontend
 

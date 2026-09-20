@@ -1,6 +1,7 @@
 import re
 from llm import llm
 from utils.json_parser import parse_json
+from utils.normalizers import normalize_entities
 
 # Known UPI payment handle suffixes
 UPI_SUFFIXES = {
@@ -36,30 +37,16 @@ def _deduplicate_entities(entities: dict) -> dict:
 
 def _assign_confidence(entities: dict) -> dict:
     """
-    Assign a confidence level (high/medium/low) to each extracted entity
-    based on deterministic rules — no extra LLM call needed.
-
-    Rules:
-    - phone_numbers: 10 digits = high, 7-9 digits = medium, <7 = low
-    - upi_ids: contains @ and known suffix = high, contains @ = medium, else low
-    - emails: contains @ and a dot in domain = high, else low
-    - amounts: pure numeric (after stripping symbols) = high, else medium
-    - urls: starts with http = high, else medium
-    - others: always high (government authorities, bank accounts, telegram IDs)
+    Assign confidence level (high/medium/low) to each extracted entity.
+    Input must be flat string lists — call AFTER normalize_entities.
+    Returns same structure with lists of {"value": str, "confidence": str}.
     """
     result = {}
-
     for field, values in entities.items():
         if not isinstance(values, list):
             result[field] = values
             continue
-
-        scored = []
-        for val in values:
-            confidence = _score_value(field, val)
-            scored.append({"value": val, "confidence": confidence})
-        result[field] = scored
-
+        result[field] = [{"value": val, "confidence": _score_value(field, val)} for val in values]
     return result
 
 
@@ -92,11 +79,20 @@ def _score_value(field: str, value: str) -> str:
     if field == "urls":
         return "high" if value.lower().startswith("http") else "medium"
 
-    # government_authorities, bank_accounts, telegram_ids — take at face value
     return "high"
 
 
-def extract_entities(message: str):
+def extract_entities(message: str) -> dict:
+    """
+    Extract entities from complaint message.
+
+    Pipeline:
+    1. LLM extracts raw entities (flat string lists)
+    2. Fix UPI/email misclassification
+    3. Deduplicate
+    4. Normalize (phone formats, amounts, URLs)  ← flat strings still
+    5. Assign confidence scores                   ← converts to {value, confidence} dicts
+    """
 
     prompt = f"""
 You are a Cybercrime Entity Extraction Agent.
@@ -134,28 +130,47 @@ Schema:
 
     response = llm.invoke(prompt)
     entities = parse_json(response.content)
+
+    # Steps 2-4: all operate on flat string lists
     entities = _fix_upi_email_split(entities)
     entities = _deduplicate_entities(entities)
+    entities = normalize_entities(entities)  # normalize BEFORE confidence annotation
 
-    # Attach confidence scores — pure Python logic, no extra LLM call
-    entities_with_confidence = _assign_confidence(entities)
+    # Step 5: annotate with confidence — converts to {value, confidence} dicts
+    entities = _assign_confidence(entities)
 
-    return entities_with_confidence
+    return entities
 
 
 def get_high_confidence_values(entities: dict) -> dict:
     """
-    Return a flat dict with only high/medium confidence values per field.
-    Used by intelligence_agent for graph matching to reduce false positives.
+    Return flat string lists with only high/medium confidence values.
+    Used by intelligence_agent and risk_agent for matching and scoring.
     """
     flat = {}
     for field, values in entities.items():
         if not isinstance(values, list):
             flat[field] = values
             continue
-        # Keep high and medium, skip low confidence
         flat[field] = [
             v["value"] for v in values
             if isinstance(v, dict) and v.get("confidence") in ("high", "medium")
+        ]
+    return flat
+
+
+def get_flat_values(entities: dict) -> dict:
+    """
+    Return all entity values as flat strings regardless of confidence.
+    Used when we need plain strings for joins/display (risk agent, guidance agent).
+    """
+    flat = {}
+    for field, values in entities.items():
+        if not isinstance(values, list):
+            flat[field] = values
+            continue
+        flat[field] = [
+            v["value"] if isinstance(v, dict) else v
+            for v in values
         ]
     return flat
